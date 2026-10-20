@@ -1,0 +1,65 @@
+# Docker Compose — De los Reyes ERP
+# COMANDOS:
+#   Iniciar:          docker compose up -d
+#   Detener:          docker compose down
+#   Borrar todo:      docker compose down -v
+#   Ver logs:         docker compose logs -f db
+#   Entrar a psql:    docker exec -it delosreyes-db psql -U postgres -d delosreyes_erp
+#
+# CONEXIÓN DESDE LA APP:
+#   Host:     localhost
+#   Puerto:   5432
+#   BD:       delosreyes_erp
+#   Usuario:  postgres
+#   Password: postgres123
+#
+# CONEXIÓN DESDE DBEAVER / OTRO CLIENTE:
+#   Mismos datos de arriba
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: delosreyes-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: delosreyes_erp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d delosreyes_erp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  #  pgAdmin (interfaz web para ver la BD) ───
+  # Acceso: http://localhost:5050
+  # Email:  admin@delosreyes.com
+  # Pass:   admin
+  # Para activarlo ejecutar:
+  #   docker compose --profile tools up -d
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: delosreyes-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@delosreyes.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
